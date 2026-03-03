@@ -1,0 +1,1857 @@
+<!doctype html>
+<html lang="es">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Zellij Config Builder</title>
+        <style>
+            @import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Syne:wght@400;600;800&display=swap");
+
+            :root {
+                --bg: #0d0f14;
+                --surface: #13161e;
+                --surface2: #1a1e2a;
+                --border: #252a38;
+                --border2: #2e3549;
+                --accent: #7aa2f7;
+                --accent2: #bb9af7;
+                --green: #9ece6a;
+                --red: #f7768e;
+                --yellow: #e0af68;
+                --cyan: #7dcfff;
+                --text: #c0caf5;
+                --text2: #737aa2;
+                --text3: #414868;
+            }
+
+            * {
+                box-sizing: border-box;
+                margin: 0;
+                padding: 0;
+            }
+
+            body {
+                font-family: "JetBrains Mono", monospace;
+                background: var(--bg);
+                color: var(--text);
+                min-height: 100vh;
+                font-size: 13px;
+            }
+
+            /* HEADER */
+            header {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 18px 32px;
+                border-bottom: 1px solid var(--border);
+                background: var(--surface);
+                position: sticky;
+                top: 0;
+                z-index: 100;
+            }
+            .logo {
+                font-family: "Syne", sans-serif;
+                font-weight: 800;
+                font-size: 20px;
+                color: var(--accent);
+                letter-spacing: -0.5px;
+            }
+            .logo span {
+                color: var(--accent2);
+            }
+            .header-actions {
+                display: flex;
+                gap: 10px;
+                align-items: center;
+            }
+
+            /* BUTTONS */
+            .btn {
+                font-family: "JetBrains Mono", monospace;
+                font-size: 12px;
+                padding: 7px 14px;
+                border-radius: 6px;
+                border: 1px solid var(--border2);
+                cursor: pointer;
+                transition: all 0.15s;
+                background: transparent;
+                color: var(--text);
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+            }
+            .btn:hover {
+                border-color: var(--accent);
+                color: var(--accent);
+            }
+            .btn-primary {
+                background: var(--accent);
+                color: #0d0f14;
+                border-color: var(--accent);
+                font-weight: 700;
+            }
+            .btn-primary:hover {
+                background: #8bb3ff;
+                border-color: #8bb3ff;
+                color: #0d0f14;
+            }
+            .btn-danger {
+                border-color: var(--red);
+                color: var(--red);
+            }
+            .btn-danger:hover {
+                background: var(--red);
+                color: #0d0f14;
+            }
+            .btn-success {
+                border-color: var(--green);
+                color: var(--green);
+            }
+            .btn-success:hover {
+                background: var(--green);
+                color: #0d0f14;
+            }
+
+            /* LAYOUT */
+            .app-layout {
+                display: grid;
+                grid-template-columns: 280px 1fr 360px;
+                height: calc(100vh - 61px);
+            }
+
+            /* SIDEBAR */
+            .sidebar {
+                border-right: 1px solid var(--border);
+                background: var(--surface);
+                overflow-y: auto;
+                display: flex;
+                flex-direction: column;
+            }
+            .sidebar-section {
+                padding: 16px;
+                border-bottom: 1px solid var(--border);
+            }
+            .sidebar-label {
+                font-size: 10px;
+                text-transform: uppercase;
+                letter-spacing: 1.5px;
+                color: var(--text3);
+                margin-bottom: 10px;
+                font-weight: 700;
+            }
+
+            /* FILTER / SEARCH */
+            .search-input {
+                width: 100%;
+                background: var(--surface2);
+                border: 1px solid var(--border2);
+                border-radius: 6px;
+                padding: 7px 10px;
+                color: var(--text);
+                font-family: "JetBrains Mono", monospace;
+                font-size: 12px;
+                outline: none;
+                transition: border-color 0.15s;
+            }
+            .search-input:focus {
+                border-color: var(--accent);
+            }
+            .search-input::placeholder {
+                color: var(--text3);
+            }
+
+            /* ACTION LIST */
+            .action-list {
+                padding: 8px;
+            }
+            .action-item {
+                padding: 8px 10px;
+                border-radius: 6px;
+                cursor: pointer;
+                transition: all 0.1s;
+                color: var(--text2);
+                font-size: 12px;
+                border: 1px solid transparent;
+            }
+            .action-item:hover {
+                background: var(--surface2);
+                color: var(--text);
+            }
+            .action-item.active {
+                background: var(--surface2);
+                border-color: var(--accent);
+                color: var(--accent);
+            }
+            .action-item.has-bindings {
+                color: var(--green);
+            }
+            .action-item.has-bindings::before {
+                content: "● ";
+                font-size: 8px;
+            }
+            .action-badge {
+                float: right;
+                background: var(--surface);
+                border-radius: 3px;
+                padding: 1px 5px;
+                font-size: 10px;
+                color: var(--text3);
+                border: 1px solid var(--border);
+            }
+
+            /* MAIN AREA */
+            .main {
+                overflow-y: auto;
+                padding: 24px;
+                background: var(--bg);
+            }
+
+            .action-header {
+                margin-bottom: 24px;
+            }
+            .action-title {
+                font-family: "Syne", sans-serif;
+                font-size: 26px;
+                font-weight: 800;
+                color: var(--text);
+                margin-bottom: 4px;
+            }
+            .action-title .action-name {
+                color: var(--accent);
+            }
+            .action-desc {
+                color: var(--text2);
+                font-size: 12px;
+                line-height: 1.6;
+                margin-bottom: 8px;
+            }
+            .action-args {
+                display: inline-flex;
+                gap: 6px;
+                flex-wrap: wrap;
+            }
+            .arg-tag {
+                background: var(--surface2);
+                border: 1px solid var(--border2);
+                border-radius: 4px;
+                padding: 2px 8px;
+                font-size: 11px;
+                color: var(--yellow);
+            }
+
+            /* BINDINGS */
+            .bindings-area {
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+            }
+
+            .binding-card {
+                background: var(--surface);
+                border: 1px solid var(--border);
+                border-radius: 10px;
+                overflow: hidden;
+                transition: border-color 0.15s;
+            }
+            .binding-card:hover {
+                border-color: var(--border2);
+            }
+            .binding-card.conflict {
+                border-color: var(--red) !important;
+            }
+            .binding-card.conflict .binding-card-header {
+                border-bottom-color: var(--red);
+            }
+
+            .binding-card-header {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 12px 16px;
+                border-bottom: 1px solid var(--border);
+                background: var(--surface2);
+            }
+            .binding-num {
+                font-size: 10px;
+                color: var(--text3);
+                font-weight: 700;
+            }
+            .conflict-badge {
+                background: var(--red);
+                color: #0d0f14;
+                font-size: 10px;
+                padding: 2px 8px;
+                border-radius: 4px;
+                font-weight: 700;
+                display: none;
+            }
+            .binding-card.conflict .conflict-badge {
+                display: inline-block;
+            }
+
+            .binding-body {
+                padding: 16px;
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 12px;
+            }
+
+            .field-group {
+                display: flex;
+                flex-direction: column;
+                gap: 6px;
+            }
+            .field-group.full {
+                grid-column: 1/-1;
+            }
+            .field-label {
+                font-size: 10px;
+                color: var(--text3);
+                text-transform: uppercase;
+                letter-spacing: 1px;
+            }
+
+            .field-input {
+                background: var(--bg);
+                border: 1px solid var(--border2);
+                border-radius: 6px;
+                padding: 8px 10px;
+                color: var(--text);
+                font-family: "JetBrains Mono", monospace;
+                font-size: 12px;
+                outline: none;
+                transition: border-color 0.15s;
+                width: 100%;
+            }
+            .field-input:focus {
+                border-color: var(--accent);
+            }
+            .field-input.conflict-input {
+                border-color: var(--red);
+            }
+
+            select.field-input {
+                cursor: pointer;
+            }
+            select.field-input option {
+                background: var(--surface2);
+            }
+
+            /* KEY RECORDER */
+            .key-recorder {
+                background: var(--bg);
+                border: 1px solid var(--border2);
+                border-radius: 6px;
+                padding: 8px 10px;
+                font-size: 12px;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                min-height: 36px;
+                transition: border-color 0.15s;
+                position: relative;
+            }
+            .key-recorder:focus {
+                outline: none;
+                border-color: var(--accent);
+            }
+            .key-recorder.recording {
+                border-color: var(--yellow);
+                animation: pulse 1s infinite;
+            }
+            .key-recorder.conflict-input {
+                border-color: var(--red);
+            }
+            @keyframes pulse {
+                0%,
+                100% {
+                    box-shadow: 0 0 0 0 rgba(224, 175, 104, 0.3);
+                }
+                50% {
+                    box-shadow: 0 0 0 4px rgba(224, 175, 104, 0);
+                }
+            }
+
+            .key-tag {
+                background: var(--surface2);
+                border: 1px solid var(--border2);
+                border-radius: 4px;
+                padding: 2px 7px;
+                font-size: 11px;
+                color: var(--cyan);
+                white-space: nowrap;
+            }
+            .key-placeholder {
+                color: var(--text3);
+                font-size: 11px;
+            }
+            .recording-dot {
+                width: 6px;
+                height: 6px;
+                border-radius: 50%;
+                background: var(--yellow);
+                animation: blink 0.8s infinite;
+            }
+            @keyframes blink {
+                0%,
+                100% {
+                    opacity: 1;
+                }
+                50% {
+                    opacity: 0.2;
+                }
+            }
+
+            /* SHARED MODES */
+            .modes-grid {
+                display: grid;
+                grid-template-columns: repeat(4, 1fr);
+                gap: 6px;
+                margin-top: 4px;
+            }
+            .mode-toggle {
+                padding: 5px 0;
+                text-align: center;
+                border-radius: 5px;
+                border: 1px solid var(--border2);
+                cursor: pointer;
+                font-size: 11px;
+                color: var(--text3);
+                transition: all 0.1s;
+                background: var(--bg);
+                user-select: none;
+            }
+            .mode-toggle:hover {
+                border-color: var(--accent2);
+                color: var(--accent2);
+            }
+            .mode-toggle.selected {
+                background: var(--accent2);
+                border-color: var(--accent2);
+                color: #0d0f14;
+                font-weight: 700;
+            }
+
+            /* SHARED TYPE */
+            .shared-type-row {
+                display: flex;
+                gap: 6px;
+            }
+            .shared-type-btn {
+                flex: 1;
+                padding: 7px 0;
+                text-align: center;
+                border-radius: 6px;
+                border: 1px solid var(--border2);
+                cursor: pointer;
+                font-size: 11px;
+                color: var(--text3);
+                transition: all 0.1s;
+                background: var(--bg);
+                user-select: none;
+            }
+            .shared-type-btn:hover {
+                border-color: var(--accent);
+                color: var(--accent);
+            }
+            .shared-type-btn.selected {
+                background: var(--accent);
+                border-color: var(--accent);
+                color: #0d0f14;
+                font-weight: 700;
+            }
+
+            /* ACTION ARG INPUT */
+            .arg-input-area {
+                margin-top: 8px;
+            }
+
+            /* ADD BINDING */
+            .add-binding-btn {
+                border: 1px dashed var(--border2);
+                border-radius: 10px;
+                padding: 14px;
+                text-align: center;
+                cursor: pointer;
+                color: var(--text3);
+                font-size: 12px;
+                transition: all 0.15s;
+                background: transparent;
+            }
+            .add-binding-btn:hover {
+                border-color: var(--accent);
+                color: var(--accent);
+            }
+
+            /* EMPTY STATE */
+            .empty-state {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                height: 60%;
+                gap: 12px;
+                color: var(--text3);
+            }
+            .empty-icon {
+                font-size: 48px;
+                opacity: 0.3;
+            }
+            .empty-text {
+                font-family: "Syne", sans-serif;
+                font-size: 16px;
+            }
+
+            /* OUTPUT PANEL */
+            .output-panel {
+                border-left: 1px solid var(--border);
+                background: var(--surface);
+                display: flex;
+                flex-direction: column;
+            }
+            .output-header {
+                padding: 14px 16px;
+                border-bottom: 1px solid var(--border);
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                background: var(--surface2);
+            }
+            .output-title {
+                font-family: "Syne", sans-serif;
+                font-size: 13px;
+                font-weight: 700;
+                color: var(--text2);
+                text-transform: uppercase;
+                letter-spacing: 1px;
+            }
+            .output-code {
+                flex: 1;
+                overflow-y: auto;
+                padding: 16px;
+            }
+            pre {
+                font-family: "JetBrains Mono", monospace;
+                font-size: 11px;
+                line-height: 1.7;
+                color: var(--text2);
+                white-space: pre-wrap;
+                word-break: break-all;
+            }
+            .kdl-comment {
+                color: var(--text3);
+            }
+            .kdl-key {
+                color: var(--accent);
+            }
+            .kdl-action {
+                color: var(--green);
+            }
+            .kdl-mode {
+                color: var(--accent2);
+            }
+            .kdl-value {
+                color: var(--yellow);
+            }
+
+            .output-footer {
+                padding: 12px 16px;
+                border-top: 1px solid var(--border);
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+            }
+            .conflict-summary {
+                color: var(--red);
+                font-size: 11px;
+                padding: 6px 10px;
+                background: rgba(247, 118, 142, 0.08);
+                border-radius: 6px;
+                border: 1px solid rgba(247, 118, 142, 0.2);
+                display: none;
+            }
+            .conflict-summary.visible {
+                display: block;
+            }
+
+            /* MODAL */
+            .modal-overlay {
+                display: none;
+                position: fixed;
+                inset: 0;
+                background: rgba(0, 0, 0, 0.7);
+                z-index: 1000;
+                align-items: center;
+                justify-content: center;
+                backdrop-filter: blur(4px);
+            }
+            .modal-overlay.open {
+                display: flex;
+            }
+            .modal {
+                background: var(--surface);
+                border: 1px solid var(--border2);
+                border-radius: 14px;
+                width: 600px;
+                max-width: 90vw;
+                max-height: 80vh;
+                display: flex;
+                flex-direction: column;
+                overflow: hidden;
+            }
+            .modal-header {
+                padding: 20px 24px 16px;
+                border-bottom: 1px solid var(--border);
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+            }
+            .modal-title {
+                font-family: "Syne", sans-serif;
+                font-size: 18px;
+                font-weight: 700;
+            }
+            .modal-close {
+                cursor: pointer;
+                color: var(--text3);
+                font-size: 18px;
+            }
+            .modal-close:hover {
+                color: var(--text);
+            }
+            .modal-body {
+                padding: 20px 24px;
+                overflow-y: auto;
+                flex: 1;
+            }
+            .modal-footer {
+                padding: 16px 24px;
+                border-top: 1px solid var(--border);
+                display: flex;
+                gap: 10px;
+                justify-content: flex-end;
+            }
+
+            .drop-zone {
+                border: 2px dashed var(--border2);
+                border-radius: 10px;
+                padding: 40px;
+                text-align: center;
+                cursor: pointer;
+                transition: all 0.2s;
+                color: var(--text3);
+                margin-bottom: 16px;
+            }
+            .drop-zone:hover,
+            .drop-zone.dragover {
+                border-color: var(--accent);
+                color: var(--accent);
+                background: rgba(122, 162, 247, 0.05);
+            }
+            .drop-zone-icon {
+                font-size: 32px;
+                margin-bottom: 8px;
+            }
+            .drop-zone-text {
+                font-size: 13px;
+            }
+            .drop-zone-sub {
+                font-size: 11px;
+                color: var(--text3);
+                margin-top: 4px;
+            }
+
+            .parse-preview {
+                background: var(--bg);
+                border-radius: 8px;
+                padding: 12px;
+                font-size: 11px;
+                color: var(--text2);
+                margin-top: 12px;
+                max-height: 200px;
+                overflow-y: auto;
+                display: none;
+            }
+
+            .toast {
+                position: fixed;
+                bottom: 24px;
+                right: 24px;
+                background: var(--surface);
+                border: 1px solid var(--border2);
+                border-radius: 8px;
+                padding: 12px 18px;
+                font-size: 12px;
+                z-index: 9999;
+                animation: slideIn 0.2s ease;
+                pointer-events: none;
+            }
+            .toast.success {
+                border-color: var(--green);
+                color: var(--green);
+            }
+            .toast.error {
+                border-color: var(--red);
+                color: var(--red);
+            }
+            @keyframes slideIn {
+                from {
+                    transform: translateY(10px);
+                    opacity: 0;
+                }
+                to {
+                    transform: translateY(0);
+                    opacity: 1;
+                }
+            }
+
+            /* SCROLLBAR */
+            ::-webkit-scrollbar {
+                width: 4px;
+            }
+            ::-webkit-scrollbar-track {
+                background: transparent;
+            }
+            ::-webkit-scrollbar-thumb {
+                background: var(--border2);
+                border-radius: 2px;
+            }
+
+            .section-divider {
+                font-size: 10px;
+                text-transform: uppercase;
+                letter-spacing: 1.5px;
+                color: var(--text3);
+                padding: 10px 16px 4px;
+                font-weight: 700;
+            }
+        </style>
+    </head>
+    <body>
+        <header>
+            <div class="logo">zellij<span>·</span>config</div>
+            <div class="header-actions">
+                <button class="btn" onclick="openImportModal()">
+                    📂 Importar .kdl
+                </button>
+                <button class="btn btn-danger" onclick="clearAll()">
+                    🗑 Limpiar todo
+                </button>
+                <button class="btn btn-success" onclick="exportConfig()">
+                    💾 Exportar config.kdl
+                </button>
+            </div>
+        </header>
+
+        <div class="app-layout">
+            <!-- SIDEBAR: lista de acciones -->
+            <div class="sidebar">
+                <div class="sidebar-section">
+                    <div class="sidebar-label">Buscar acción</div>
+                    <input
+                        type="text"
+                        class="search-input"
+                        placeholder="Ej: NewPane, Close..."
+                        id="actionSearch"
+                        oninput="filterActions()"
+                    />
+                </div>
+                <div class="section-divider">Acciones disponibles</div>
+                <div class="action-list" id="actionList"></div>
+            </div>
+
+            <!-- MAIN: editor de bindings -->
+            <div class="main" id="mainArea">
+                <div class="empty-state">
+                    <div class="empty-icon">⌨</div>
+                    <div class="empty-text">Selecciona una acción</div>
+                    <div style="color: var(--text3); font-size: 12px">
+                        Elige una acción del panel izquierdo para configurar sus
+                        atajos
+                    </div>
+                </div>
+            </div>
+
+            <!-- OUTPUT PANEL -->
+            <div class="output-panel">
+                <div class="output-header">
+                    <div class="output-title">config.kdl</div>
+                    <button
+                        class="btn"
+                        onclick="copyOutput()"
+                        style="font-size: 11px; padding: 5px 10px"
+                    >
+                        Copiar
+                    </button>
+                </div>
+                <div class="output-code">
+                    <pre
+                        id="outputCode"
+                    ><span class="kdl-comment">// Configura atajos en el editor →</span></pre>
+                </div>
+                <div class="output-footer">
+                    <div class="conflict-summary" id="conflictSummary"></div>
+                    <button
+                        class="btn btn-primary"
+                        onclick="exportConfig()"
+                        style="width: 100%; justify-content: center"
+                    >
+                        💾 Descargar config.kdl
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- MODAL IMPORTAR -->
+        <div class="modal-overlay" id="importModal">
+            <div class="modal">
+                <div class="modal-header">
+                    <div class="modal-title">Importar config.kdl</div>
+                    <div class="modal-close" onclick="closeImportModal()">
+                        ✕
+                    </div>
+                </div>
+                <div class="modal-body">
+                    <div
+                        class="drop-zone"
+                        id="dropZone"
+                        onclick="document.getElementById('fileInput').click()"
+                        ondragover="dragOver(event)"
+                        ondragleave="dragLeave(event)"
+                        ondrop="dropFile(event)"
+                    >
+                        <div class="drop-zone-icon">📄</div>
+                        <div class="drop-zone-text">
+                            Arrastra tu config.kdl aquí
+                        </div>
+                        <div class="drop-zone-sub">
+                            o haz clic para seleccionar archivo
+                        </div>
+                    </div>
+                    <input
+                        type="file"
+                        id="fileInput"
+                        accept=".kdl"
+                        style="display: none"
+                        onchange="loadFile(event)"
+                    />
+                    <div class="parse-preview" id="parsePreview"></div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn" onclick="closeImportModal()">
+                        Cancelar
+                    </button>
+                    <button
+                        class="btn btn-primary"
+                        id="confirmImport"
+                        onclick="confirmImport()"
+                        style="display: none"
+                    >
+                        Importar
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            const MODES = [
+                "normal",
+                "locked",
+                "resize",
+                "pane",
+                "move",
+                "tab",
+                "scroll",
+                "search",
+                "entersearch",
+                "renametab",
+                "renamepane",
+                "session",
+                "tmux",
+            ];
+
+            const ACTIONS = [
+                {
+                    name: "Clear",
+                    desc: "Limpia el scrollback del panel enfocado",
+                    args: [],
+                },
+                {
+                    name: "CloseFocus",
+                    desc: "Cierra el panel actualmente enfocado",
+                    args: [],
+                },
+                {
+                    name: "CloseTab",
+                    desc: "Cierra la pestaña enfocada",
+                    args: [],
+                },
+                {
+                    name: "Detach",
+                    desc: "Desconecta de la sesión actual, dejándola en segundo plano",
+                    args: [],
+                },
+                {
+                    name: "DumpScreen",
+                    desc: "Vuelca el contenido del panel a un archivo",
+                    args: [
+                        {
+                            label: "Ruta al archivo",
+                            type: "text",
+                            placeholder: '"/tmp/dump.txt"',
+                        },
+                    ],
+                },
+                {
+                    name: "EditScrollback",
+                    desc: "Edita el scrollback con el editor predeterminado",
+                    args: [],
+                },
+                {
+                    name: "FocusNextPane",
+                    desc: "Cambia el foco al siguiente panel",
+                    args: [],
+                },
+                {
+                    name: "FocusPreviousPane",
+                    desc: "Cambia el foco al panel anterior",
+                    args: [],
+                },
+                {
+                    name: "GoToNextTab",
+                    desc: "Cambia el foco a la siguiente pestaña",
+                    args: [],
+                },
+                {
+                    name: "GoToPreviousTab",
+                    desc: "Cambia el foco a la pestaña anterior",
+                    args: [],
+                },
+                {
+                    name: "GoToTab",
+                    desc: "Cambia el foco a una pestaña por índice",
+                    args: [
+                        {
+                            label: "Índice de pestaña",
+                            type: "number",
+                            placeholder: "1",
+                        },
+                    ],
+                },
+                {
+                    name: "HalfPageScrollDown",
+                    desc: "Hace scroll media página hacia abajo",
+                    args: [],
+                },
+                {
+                    name: "HalfPageScrollUp",
+                    desc: "Hace scroll media página hacia arriba",
+                    args: [],
+                },
+                {
+                    name: "LaunchOrFocusPlugin",
+                    desc: "Lanza o enfoca un plugin",
+                    args: [
+                        {
+                            label: "URL del plugin",
+                            type: "text",
+                            placeholder: '"zellij:strider"',
+                        },
+                        {
+                            label: "Floating",
+                            type: "select",
+                            options: ["", "true", "false"],
+                        },
+                    ],
+                },
+                {
+                    name: "MoveFocus",
+                    desc: "Mueve el foco en una dirección específica",
+                    args: [
+                        {
+                            label: "Dirección",
+                            type: "select",
+                            options: ["Left", "Right", "Up", "Down"],
+                        },
+                    ],
+                },
+                {
+                    name: "MoveFocusOrTab",
+                    desc: "Mueve el foco o cambia de pestaña en el borde",
+                    args: [
+                        {
+                            label: "Dirección",
+                            type: "select",
+                            options: ["Left", "Right"],
+                        },
+                    ],
+                },
+                {
+                    name: "MovePane",
+                    desc: "Mueve el panel enfocado en una dirección",
+                    args: [
+                        {
+                            label: "Dirección",
+                            type: "select",
+                            options: ["", "Left", "Right", "Up", "Down"],
+                        },
+                    ],
+                },
+                {
+                    name: "MovePaneBackwards",
+                    desc: "Mueve el panel a la posición anterior",
+                    args: [],
+                },
+                {
+                    name: "MoveTab",
+                    desc: "Cambia la posición de la pestaña activa",
+                    args: [
+                        {
+                            label: "Dirección",
+                            type: "select",
+                            options: ["Left", "Right"],
+                        },
+                    ],
+                },
+                {
+                    name: "NewPane",
+                    desc: "Abre un nuevo panel",
+                    args: [
+                        {
+                            label: "Dirección (opcional)",
+                            type: "select",
+                            options: ["", "Down", "Right", "Stacked"],
+                        },
+                    ],
+                },
+                { name: "NewTab", desc: "Abre una nueva pestaña", args: [] },
+                {
+                    name: "NextSwapLayout",
+                    desc: "Cambia al siguiente layout de la pestaña",
+                    args: [],
+                },
+                {
+                    name: "PageScrollDown",
+                    desc: "Hace scroll una página hacia abajo",
+                    args: [],
+                },
+                {
+                    name: "PageScrollUp",
+                    desc: "Hace scroll una página hacia arriba",
+                    args: [],
+                },
+                {
+                    name: "PaneNameInput",
+                    desc: "Input para renombrar panel",
+                    args: [
+                        { label: "Valor", type: "number", placeholder: "0" },
+                    ],
+                },
+                {
+                    name: "PreviousSwapLayout",
+                    desc: "Cambia al layout anterior de la pestaña",
+                    args: [],
+                },
+                { name: "Quit", desc: "Cierra Zellij completamente", args: [] },
+                {
+                    name: "Resize",
+                    desc: "Redimensiona el panel enfocado",
+                    args: [
+                        {
+                            label: "Dirección/Tamaño",
+                            type: "select",
+                            options: [
+                                "Left",
+                                "Right",
+                                "Up",
+                                "Down",
+                                "Increase",
+                                "Decrease",
+                            ],
+                        },
+                    ],
+                },
+                {
+                    name: "ScrollDown",
+                    desc: "Hace scroll del panel hacia abajo 1 línea",
+                    args: [],
+                },
+                {
+                    name: "ScrollToBottom",
+                    desc: "Hace scroll al final del panel",
+                    args: [],
+                },
+                {
+                    name: "ScrollToTop",
+                    desc: "Hace scroll al inicio del panel",
+                    args: [],
+                },
+                {
+                    name: "ScrollUp",
+                    desc: "Hace scroll del panel hacia arriba 1 línea",
+                    args: [],
+                },
+                {
+                    name: "Search",
+                    desc: "Mueve a la siguiente/anterior ocurrencia de búsqueda",
+                    args: [
+                        {
+                            label: "Dirección",
+                            type: "select",
+                            options: ["down", "up"],
+                        },
+                    ],
+                },
+                {
+                    name: "SearchInput",
+                    desc: "Input para búsqueda",
+                    args: [
+                        { label: "Valor", type: "number", placeholder: "0" },
+                    ],
+                },
+                {
+                    name: "SearchToggleOption",
+                    desc: "Activa/desactiva opciones de búsqueda",
+                    args: [
+                        {
+                            label: "Opción",
+                            type: "select",
+                            options: ["CaseSensitivity", "Wrap", "WholeWord"],
+                        },
+                    ],
+                },
+                {
+                    name: "SwitchFocus",
+                    desc: "Cambia el foco entre paneles",
+                    args: [],
+                },
+                {
+                    name: "SwitchToMode",
+                    desc: "Cambia el modo de entrada actual",
+                    args: [{ label: "Modo", type: "select", options: MODES }],
+                },
+                {
+                    name: "TabNameInput",
+                    desc: "Input para renombrar pestaña",
+                    args: [
+                        { label: "Valor", type: "number", placeholder: "0" },
+                    ],
+                },
+                {
+                    name: "ToggleActiveSyncTab",
+                    desc: "Activa/desactiva la sincronización de entrada entre paneles",
+                    args: [],
+                },
+                {
+                    name: "ToggleFloatingPanes",
+                    desc: "Muestra/oculta paneles flotantes",
+                    args: [],
+                },
+                {
+                    name: "ToggleFocusFullscreen",
+                    desc: "Activa/desactiva el panel enfocado en pantalla completa",
+                    args: [],
+                },
+                {
+                    name: "ToggleMouseMode",
+                    desc: "Activa/desactiva el soporte de ratón",
+                    args: [],
+                },
+                {
+                    name: "TogglePaneEmbedOrFloating",
+                    desc: "Hace flotar el panel embebido o embebe el flotante",
+                    args: [],
+                },
+                {
+                    name: "TogglePaneFrames",
+                    desc: "Muestra/oculta los marcos alrededor de los paneles",
+                    args: [],
+                },
+                {
+                    name: "TogglePanePinned",
+                    desc: "Fija/desfija el panel activo",
+                    args: [],
+                },
+                {
+                    name: "ToggleTab",
+                    desc: "Cambia el foco entre pestañas",
+                    args: [],
+                },
+                {
+                    name: "UndoRenamePane",
+                    desc: "Deshace la operación de renombrar panel",
+                    args: [],
+                },
+                {
+                    name: "UndoRenameTab",
+                    desc: "Deshace la operación de renombrar pestaña",
+                    args: [],
+                },
+                {
+                    name: "Write",
+                    desc: "Escribe bytes en el panel activo",
+                    args: [
+                        {
+                            label: "Bytes (ej: 102 111 111)",
+                            type: "text",
+                            placeholder: "102 111 111",
+                        },
+                    ],
+                },
+                {
+                    name: "WriteChars",
+                    desc: "Escribe una cadena de caracteres en el panel activo",
+                    args: [
+                        { label: "Texto", type: "text", placeholder: '"hola"' },
+                    ],
+                },
+            ];
+
+            // Estado global
+            let state = {}; // { actionName: [binding, ...] }
+            // binding = { key: string, mode: string, sharedType: 'none'|'shared'|'shared_except'|'shared_among', sharedModes: [], actionArgs: {} }
+
+            let currentAction = null;
+            let pendingImportText = null;
+
+            // Inicializar
+            ACTIONS.forEach((a) => {
+                state[a.name] = [];
+            });
+            renderActionList();
+
+            // ===================== SIDEBAR =====================
+            function renderActionList() {
+                const q = document
+                    .getElementById("actionSearch")
+                    .value.toLowerCase();
+                const list = document.getElementById("actionList");
+                list.innerHTML = "";
+                ACTIONS.filter((a) => a.name.toLowerCase().includes(q)).forEach(
+                    (a) => {
+                        const count = state[a.name].length;
+                        const div = document.createElement("div");
+                        div.className = `action-item ${count > 0 ? "has-bindings" : ""} ${currentAction === a.name ? "active" : ""}`;
+                        div.innerHTML = `${a.name}${count > 0 ? `<span class="action-badge">${count}</span>` : ""}`;
+                        div.onclick = () => selectAction(a.name);
+                        list.appendChild(div);
+                    },
+                );
+            }
+
+            function filterActions() {
+                renderActionList();
+            }
+
+            // ===================== MAIN EDITOR =====================
+            function selectAction(name) {
+                currentAction = name;
+                renderActionList();
+                renderEditor();
+            }
+
+            function renderEditor() {
+                const main = document.getElementById("mainArea");
+                const action = ACTIONS.find((a) => a.name === currentAction);
+                if (!action) return;
+                const bindings = state[currentAction];
+
+                const conflicts = findConflicts();
+
+                main.innerHTML = `
+    <div class="action-header">
+      <div class="action-title"><span class="action-name">${action.name}</span></div>
+      <div class="action-desc">${action.desc}</div>
+      ${action.args.length ? `<div class="action-args">${action.args.map((a) => `<span class="arg-tag">${a.label}</span>`).join("")}</div>` : ""}
+    </div>
+    <div class="bindings-area" id="bindingsArea">
+      ${bindings.map((b, i) => renderBindingCard(b, i, action, conflicts)).join("")}
+      <div class="add-binding-btn" onclick="addBinding()">+ Añadir atajo</div>
+    </div>
+  `;
+                attachKeyRecorders();
+            }
+
+            function renderBindingCard(b, i, action, conflicts) {
+                const conflictKey = `${b.key}::${b.mode}::${b.sharedType}::${(b.sharedModes || []).sort().join(",")}`;
+                const isConflict = conflicts.has(conflictKey) && b.key;
+
+                return `
+  <div class="binding-card ${isConflict ? "conflict" : ""}" id="card-${i}">
+    <div class="binding-card-header">
+      <span class="binding-num">ATAJO #${i + 1}</span>
+      <span class="conflict-badge">⚠ Conflicto de tecla</span>
+      <button class="btn btn-danger" onclick="removeBinding(${i})" style="font-size:11px;padding:4px 10px">Eliminar</button>
+    </div>
+    <div class="binding-body">
+
+      <div class="field-group">
+        <div class="field-label">Tecla(s)</div>
+        <div class="key-recorder ${isConflict ? "conflict-input" : ""}" tabindex="0" id="key-${i}" data-idx="${i}"
+          onclick="startRecording(${i})" onkeydown="recordKey(event,${i})">
+          ${b.key ? renderKeyTags(b.key) : '<span class="key-placeholder">Haz clic y presiona una tecla...</span>'}
+        </div>
+      </div>
+
+      <div class="field-group">
+        <div class="field-label">Modo individual</div>
+        <select class="field-input" onchange="updateBinding(${i}, 'mode', this.value)">
+          <option value="">— ninguno (usar shared) —</option>
+          ${MODES.map((m) => `<option value="${m}" ${b.mode === m ? "selected" : ""}>${m}</option>`).join("")}
+        </select>
+      </div>
+
+      <div class="field-group full">
+        <div class="field-label">Tipo de scope compartido</div>
+        <div class="shared-type-row">
+          ${["none", "shared", "shared_except", "shared_among"]
+              .map(
+                  (t) => `
+            <div class="shared-type-btn ${b.sharedType === t ? "selected" : ""}" onclick="updateSharedType(${i},'${t}')">${t === "none" ? "ninguno" : t}</div>
+          `,
+              )
+              .join("")}
+        </div>
+      </div>
+
+      ${
+          b.sharedType !== "none"
+              ? `
+      <div class="field-group full">
+        <div class="field-label">${b.sharedType === "shared" ? "Efectivo en modos" : b.sharedType === "shared_except" ? "Excepto en modos" : "Solo entre modos"}</div>
+        <div class="modes-grid">
+          ${MODES.map(
+              (m) => `
+            <div class="mode-toggle ${(b.sharedModes || []).includes(m) ? "selected" : ""}"
+              onclick="toggleSharedMode(${i},'${m}')">${m}</div>
+          `,
+          ).join("")}
+        </div>
+      </div>
+      `
+              : ""
+      }
+
+      ${
+          action.args.length
+              ? `
+      <div class="field-group full">
+        <div class="field-label">Argumentos de la acción</div>
+        ${action.args
+            .map(
+                (arg, ai) => `
+          <div style="margin-top:6px">
+            <div class="field-label" style="margin-bottom:4px">${arg.label}</div>
+            ${
+                arg.type === "select"
+                    ? `
+              <select class="field-input" onchange="updateArgument(${i},${ai},this.value)">
+                ${arg.options.map((o) => `<option value="${o}" ${(b.actionArgs || {})[ai] === o ? "selected" : ""}>${o || "(ninguno)"}</option>`).join("")}
+              </select>
+            `
+                    : `
+              <input type="${arg.type || "text"}" class="field-input" placeholder="${arg.placeholder || ""}"
+                value="${(b.actionArgs || {})[ai] || ""}"
+                oninput="updateArgument(${i},${ai},this.value)">
+            `
+            }
+          </div>
+        `,
+            )
+            .join("")}
+      </div>
+      `
+              : ""
+      }
+
+    </div>
+  </div>`;
+            }
+
+            function renderKeyTags(keyStr) {
+                return keyStr
+                    .split("+")
+                    .map((k) => `<span class="key-tag">${k.trim()}</span>`)
+                    .join(
+                        '<span style="color:var(--text3);padding:0 3px">+</span>',
+                    );
+            }
+
+            // ===================== BINDING OPERATIONS =====================
+            function addBinding() {
+                state[currentAction].push({
+                    key: "",
+                    mode: MODES[0],
+                    sharedType: "none",
+                    sharedModes: [],
+                    actionArgs: {},
+                });
+                renderEditor();
+                updateOutput();
+            }
+
+            function removeBinding(idx) {
+                state[currentAction].splice(idx, 1);
+                renderEditor();
+                updateOutput();
+            }
+
+            function updateBinding(idx, field, value) {
+                state[currentAction][idx][field] = value;
+                renderEditor();
+                updateOutput();
+                renderActionList();
+            }
+
+            function updateSharedType(idx, type) {
+                state[currentAction][idx].sharedType = type;
+                if (type === "none") state[currentAction][idx].sharedModes = [];
+                renderEditor();
+                updateOutput();
+            }
+
+            function toggleSharedMode(idx, mode) {
+                const b = state[currentAction][idx];
+                const modes = b.sharedModes || [];
+                const i = modes.indexOf(mode);
+                if (i === -1) modes.push(mode);
+                else modes.splice(i, 1);
+                b.sharedModes = modes;
+                renderEditor();
+                updateOutput();
+            }
+
+            function updateArgument(bindingIdx, argIdx, value) {
+                if (!state[currentAction][bindingIdx].actionArgs)
+                    state[currentAction][bindingIdx].actionArgs = {};
+                state[currentAction][bindingIdx].actionArgs[argIdx] = value;
+                updateOutput();
+            }
+
+            // ===================== KEY RECORDING =====================
+            let recording = null;
+
+            function attachKeyRecorders() {
+                // done via inline handlers
+            }
+
+            function startRecording(idx) {
+                if (recording === idx) {
+                    stopRecording();
+                    return;
+                }
+                recording = idx;
+                const el = document.getElementById(`key-${idx}`);
+                if (!el) return;
+                el.classList.add("recording");
+                el.innerHTML =
+                    '<div class="recording-dot"></div><span class="key-placeholder">Presiona la combinación de teclas...</span>';
+                el.focus();
+            }
+
+            function stopRecording() {
+                if (recording === null) return;
+                const el = document.getElementById(`key-${recording}`);
+                if (el) el.classList.remove("recording");
+                recording = null;
+            }
+
+            function recordKey(event, idx) {
+                if (recording !== idx) return;
+                event.preventDefault();
+                event.stopPropagation();
+
+                const parts = [];
+                if (event.ctrlKey) parts.push("Ctrl");
+                if (event.altKey) parts.push("Alt");
+                if (event.shiftKey) parts.push("Shift");
+
+                const ignore = ["Control", "Alt", "Shift", "Meta", "OS"];
+                if (!ignore.includes(event.key)) {
+                    const key = formatKey(event.key, event.code);
+                    parts.push(key);
+                }
+
+                if (
+                    parts.length === 0 ||
+                    (parts.length === 1 &&
+                        ["Ctrl", "Alt", "Shift"].includes(parts[0]))
+                )
+                    return;
+
+                const keyStr = parts.join(" ");
+                state[currentAction][idx].key = keyStr;
+                stopRecording();
+                renderEditor();
+                updateOutput();
+                renderActionList();
+            }
+
+            function formatKey(key, code) {
+                const map = {
+                    ArrowLeft: "left",
+                    ArrowRight: "right",
+                    ArrowUp: "up",
+                    ArrowDown: "down",
+                    Home: "Home",
+                    End: "End",
+                    PageUp: "PageUp",
+                    PageDown: "PageDown",
+                    Enter: "enter",
+                    Escape: "esc",
+                    Tab: "tab",
+                    Backspace: "Backspace",
+                    Delete: "Delete",
+                    Insert: "Insert",
+                    " ": "Space",
+                };
+                if (map[key]) return map[key];
+                if (key.startsWith("F") && code.startsWith("F")) return key; // F1-F12
+                if (key.length === 1) return key;
+                return key;
+            }
+
+            // ===================== CONFLICT DETECTION =====================
+            function findConflicts() {
+                const seen = {};
+                const conflicts = new Set();
+                Object.entries(state).forEach(([actionName, bindings]) => {
+                    bindings.forEach((b) => {
+                        if (!b.key) return;
+                        const sig = buildConflictSig(b);
+                        if (seen[sig]) {
+                            conflicts.add(sig);
+                            seen[sig].push(actionName);
+                        } else {
+                            seen[sig] = [actionName];
+                        }
+                    });
+                });
+                return conflicts;
+            }
+
+            function buildConflictSig(b) {
+                if (b.sharedType === "none" && b.mode) {
+                    return `${b.key}::${b.mode}::none::`;
+                }
+                return `${b.key}::${b.mode}::${b.sharedType}::${(b.sharedModes || []).sort().join(",")}`;
+            }
+
+            // ===================== OUTPUT GENERATION =====================
+            function generateKDL() {
+                // Group by scope
+                const byMode = {}; // mode -> [entry]
+                const byShared = {}; // "sharedType::modes" -> [entry]
+
+                Object.entries(state).forEach(([actionName, bindings]) => {
+                    bindings.forEach((b) => {
+                        if (!b.key) return;
+                        const actionStr = buildActionStr(actionName, b);
+                        const entry = { key: b.key, action: actionStr };
+
+                        if (b.sharedType === "none" && b.mode) {
+                            if (!byMode[b.mode]) byMode[b.mode] = [];
+                            byMode[b.mode].push(entry);
+                        } else if (b.sharedType !== "none") {
+                            const scopeKey = `${b.sharedType}::${(b.sharedModes || []).sort().join(",")}`;
+                            if (!byShared[scopeKey])
+                                byShared[scopeKey] = {
+                                    type: b.sharedType,
+                                    modes: b.sharedModes || [],
+                                    entries: [],
+                                };
+                            byShared[scopeKey].entries.push(entry);
+                        }
+                    });
+                });
+
+                let lines = [];
+                lines.push("// Generado por zellij·config builder");
+                lines.push(
+                    "// https://zellij.dev/documentation/keybindings-possible-actions.html",
+                );
+                lines.push("");
+                lines.push("keybinds clear-defaults=true {");
+
+                // Modes
+                MODES.forEach((mode) => {
+                    if (!byMode[mode] || byMode[mode].length === 0) return;
+                    lines.push(`    ${mode} {`);
+                    byMode[mode].forEach((e) => {
+                        lines.push(`        bind "${e.key}" { ${e.action} }`);
+                    });
+                    lines.push(`    }`);
+                });
+
+                // Shared scopes
+                Object.values(byShared).forEach((scope) => {
+                    const modesStr = scope.modes.map((m) => `"${m}"`).join(" ");
+                    let scopeDecl = "";
+                    if (scope.type === "shared")
+                        scopeDecl = `shared_among ${modesStr}`;
+                    else if (scope.type === "shared_except")
+                        scopeDecl = `shared_except ${modesStr}`;
+                    else if (scope.type === "shared_among")
+                        scopeDecl = `shared_among ${modesStr}`;
+                    lines.push(`    ${scopeDecl} {`);
+                    scope.entries.forEach((e) => {
+                        lines.push(`        bind "${e.key}" { ${e.action} }`);
+                    });
+                    lines.push(`    }`);
+                });
+
+                lines.push("}");
+                return lines.join("\n");
+            }
+
+            function buildActionStr(actionName, b) {
+                const action = ACTIONS.find((a) => a.name === actionName);
+                if (!action || action.args.length === 0)
+                    return `${actionName};`;
+                const args = action.args
+                    .map((arg, i) => {
+                        const val = (b.actionArgs || {})[i];
+                        if (!val) return null;
+                        if (arg.type === "text") return val;
+                        return val;
+                    })
+                    .filter(Boolean);
+                if (args.length === 0) return `${actionName};`;
+                return `${actionName} ${args.join(" ")};`;
+            }
+
+            function updateOutput() {
+                const kdl = generateKDL();
+                document.getElementById("outputCode").textContent = kdl;
+
+                const conflicts = findConflicts();
+                const summary = document.getElementById("conflictSummary");
+                if (conflicts.size > 0) {
+                    summary.textContent = `⚠ ${conflicts.size} conflicto(s) detectado(s). Revisa los atajos marcados en rojo.`;
+                    summary.classList.add("visible");
+                } else {
+                    summary.classList.remove("visible");
+                }
+            }
+
+            // ===================== IMPORT =====================
+            function openImportModal() {
+                document.getElementById("importModal").classList.add("open");
+                pendingImportText = null;
+                document.getElementById("parsePreview").style.display = "none";
+                document.getElementById("confirmImport").style.display = "none";
+            }
+
+            function closeImportModal() {
+                document.getElementById("importModal").classList.remove("open");
+            }
+
+            function dragOver(e) {
+                e.preventDefault();
+                document.getElementById("dropZone").classList.add("dragover");
+            }
+            function dragLeave(e) {
+                document
+                    .getElementById("dropZone")
+                    .classList.remove("dragover");
+            }
+            function dropFile(e) {
+                e.preventDefault();
+                document
+                    .getElementById("dropZone")
+                    .classList.remove("dragover");
+                const file = e.dataTransfer.files[0];
+                if (file) readKDLFile(file);
+            }
+            function loadFile(e) {
+                const file = e.target.files[0];
+                if (file) readKDLFile(file);
+            }
+
+            function readKDLFile(file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    pendingImportText = e.target.result;
+                    const preview = document.getElementById("parsePreview");
+                    const parsed = parseKDL(pendingImportText);
+                    const count = Object.values(parsed).reduce(
+                        (s, a) => s + a.length,
+                        0,
+                    );
+                    preview.style.display = "block";
+                    preview.textContent = `✓ Archivo: ${file.name}\n✓ Bindings encontrados: ${count}\n\nVista previa:\n${pendingImportText.slice(0, 400)}${pendingImportText.length > 400 ? "..." : ""}`;
+                    document.getElementById("confirmImport").style.display =
+                        "inline-flex";
+                };
+                reader.readAsText(file);
+            }
+
+            function confirmImport() {
+                if (!pendingImportText) return;
+                const parsed = parseKDL(pendingImportText);
+                // Merge into state
+                Object.entries(parsed).forEach(([action, bindings]) => {
+                    if (state[action] !== undefined) {
+                        state[action] = bindings;
+                    }
+                });
+                closeImportModal();
+                updateOutput();
+                renderActionList();
+                if (currentAction) renderEditor();
+                showToast("Config importada correctamente", "success");
+            }
+
+            function parseKDL(text) {
+                const result = {};
+                ACTIONS.forEach((a) => (result[a.name] = []));
+
+                // Parse mode blocks
+                const modeBlockRe =
+                    /^\s*(normal|locked|resize|pane|move|tab|scroll|search|entersearch|renametab|renamepane|session|tmux)\s*\{([^}]+)\}/gms;
+                let m;
+                while ((m = modeBlockRe.exec(text)) !== null) {
+                    const mode = m[1];
+                    const block = m[2];
+                    parseBindLines(
+                        block,
+                        { mode, sharedType: "none", sharedModes: [] },
+                        result,
+                    );
+                }
+
+                // Parse shared_except blocks
+                const sharedExceptRe =
+                    /shared_except\s+((?:"[^"]*"\s*)+)\{([^}]+)\}/gms;
+                while ((m = sharedExceptRe.exec(text)) !== null) {
+                    const modes = [...m[1].matchAll(/"([^"]+)"/g)].map(
+                        (x) => x[1],
+                    );
+                    parseBindLines(
+                        m[2],
+                        {
+                            mode: "",
+                            sharedType: "shared_except",
+                            sharedModes: modes,
+                        },
+                        result,
+                    );
+                }
+
+                // Parse shared_among blocks
+                const sharedAmongRe =
+                    /shared_among\s+((?:"[^"]*"\s*)+)\{([^}]+)\}/gms;
+                while ((m = sharedAmongRe.exec(text)) !== null) {
+                    const modes = [...m[1].matchAll(/"([^"]+)"/g)].map(
+                        (x) => x[1],
+                    );
+                    parseBindLines(
+                        m[2],
+                        {
+                            mode: "",
+                            sharedType: "shared_among",
+                            sharedModes: modes,
+                        },
+                        result,
+                    );
+                }
+
+                return result;
+            }
+
+            function parseBindLines(block, scope, result) {
+                const bindRe = /bind\s+"([^"]+)"\s*\{([^}]+)\}/g;
+                let m;
+                while ((m = bindRe.exec(block)) !== null) {
+                    const key = m[1];
+                    const actions = m[2].trim();
+                    // Extract first action name
+                    const actionMatch = actions.match(/(\w+)/);
+                    if (!actionMatch) continue;
+                    const actionName = actionMatch[1];
+                    if (result[actionName] === undefined) continue;
+
+                    // Extract args
+                    const argMatch = actions.match(/\w+\s+(.+?);/);
+                    const actionArgs = {};
+                    if (argMatch) {
+                        const argStr = argMatch[1].trim();
+                        const action = ACTIONS.find(
+                            (a) => a.name === actionName,
+                        );
+                        if (action && action.args.length > 0) {
+                            // Simple: assign first arg
+                            actionArgs[0] = argStr.replace(/"/g, "");
+                        }
+                    }
+
+                    result[actionName].push({
+                        key,
+                        mode: scope.mode,
+                        sharedType: scope.sharedType,
+                        sharedModes: [...scope.sharedModes],
+                        actionArgs,
+                    });
+                }
+            }
+
+            // ===================== EXPORT =====================
+            function exportConfig() {
+                const kdl = generateKDL();
+                const blob = new Blob([kdl], { type: "text/plain" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = "config.kdl";
+                a.click();
+                URL.revokeObjectURL(url);
+                showToast("config.kdl descargado", "success");
+            }
+
+            function copyOutput() {
+                navigator.clipboard
+                    .writeText(generateKDL())
+                    .then(() =>
+                        showToast("Copiado al portapapeles", "success"),
+                    );
+            }
+
+            function clearAll() {
+                if (!confirm("¿Limpiar toda la configuración?")) return;
+                ACTIONS.forEach((a) => {
+                    state[a.name] = [];
+                });
+                currentAction = null;
+                document.getElementById("mainArea").innerHTML = `
+    <div class="empty-state">
+      <div class="empty-icon">⌨</div>
+      <div class="empty-text">Selecciona una acción</div>
+      <div style="color:var(--text3);font-size:12px">Elige una acción del panel izquierdo para configurar sus atajos</div>
+    </div>`;
+                updateOutput();
+                renderActionList();
+            }
+
+            // ===================== TOAST =====================
+            function showToast(msg, type = "success") {
+                const t = document.createElement("div");
+                t.className = `toast ${type}`;
+                t.textContent = msg;
+                document.body.appendChild(t);
+                setTimeout(() => t.remove(), 2500);
+            }
+
+            // Close modal on overlay click
+            document
+                .getElementById("importModal")
+                .addEventListener("click", function (e) {
+                    if (e.target === this) closeImportModal();
+                });
+
+            // Init output
+            updateOutput();
+        </script>
+    </body>
+</html>
