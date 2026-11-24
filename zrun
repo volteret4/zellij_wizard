@@ -1,0 +1,164 @@
+#!/usr/bin/env bash
+# zrun: ejecuta un comando largo en un panel de zellij, sin quitar el foco,
+# guarda un log y bloquea hasta que termina. Devuelve el código de salida real.
+#
+#   zrun [-n nombre] [-t lineas] -- comando [args...]
+#
+# Log: $XDG_STATE_HOME/zrun/<proyecto>/<fecha>_<nombre>.log
+# Fuera de zellij (por ejemplo, en la VM) ejecuta igual, sin panel.
+#
+# Los paneles de una misma pestaña van en un stack nativo de zellij: el primero
+# divide el panel más grande (sin contar el que llama) y los demás se apilan sobre
+# él con --stacked. Si ya no caben, se cierran los terminados más antiguos (el log
+# queda en disco). Solo si zellij no deja sitio se recurre a un panel flotante.
+set -u
+
+panes() { zellij action list-panes -j -a 2>/dev/null; }
+
+# Filtra los paneles en mosaico de zrun de la pestaña propia, del más antiguo al más nuevo.
+mine='def stack($me): (map(select(.id == $me and (.is_plugin | not)))[0].tab_id) as $tab
+    | map(select(.tab_id == $tab and (.is_plugin | not) and (.is_floating | not)
+        and .id != $me and ((.terminal_command // "") | contains("[zrun]"))))
+    | sort_by(.id);'
+
+# Abre el panel ($1: panel de referencia, resto: opciones) y espera a que arranque.
+# Deja en $runner_pid el proceso del panel; falla si no se abrió. No se usa
+# --block-until-exit porque zellij 0.46 ignora el panel de referencia con --stacked.
+open_pane() {
+    local ref="$1" tries=50; shift
+    ZELLIJ_PANE_ID="$ref" zellij run --name "$name" --near-current-pane --no-focus "$@" -- \
+        bash -c "$runner" zrun "$quoted_cmd" "$log" "$status_file" >/dev/null 2>&1 </dev/null 9>&- || return 1
+    while [ ! -s "$status_file.pid" ] && [ "$tries" -gt 0 ]; do
+        sleep 0.1
+        tries=$((tries - 1))
+    done
+    runner_pid="$(cat "$status_file.pid" 2>/dev/null)"
+    [ -n "$runner_pid" ]
+}
+
+# Coloca el panel en el stack de la pestaña, creándolo si hace falta.
+open_in_stack() {
+    local ref limit rows old tab dir
+    ref="$(panes | jq -r --argjson me "$me" "$mine"' stack($me)[-1].id // empty')"
+    if [ -n "$ref" ]; then
+        # Cada panel plegado ocupa una fila: se dejan al menos 7 para el desplegado.
+        rows="$(panes | jq -r --argjson me "$me" "$mine"' stack($me)[-1].pane_rows // 0')"
+        limit=$((rows - 7))
+        [ "$limit" -gt 8 ] && limit=8
+        [ "$limit" -lt 2 ] && limit=2
+        panes | jq -r --argjson me "$me" --argjson limit "$limit" "$mine"'
+            stack($me) | (length + 1 - $limit) as $extra | .[:-1] | map(select(.exited))
+            | .[:([$extra, 0] | max)][] | .id' | while read -r old; do
+            zellij action close-pane -p "terminal_$old" </dev/null >/dev/null 2>&1
+        done
+        while :; do
+            open_pane "$ref" --stacked && return 0
+            # Sin sitio: se cierra el terminado más antiguo y se reintenta.
+            old="$(panes | jq -r --argjson me "$me" --argjson ref "$ref" "$mine"'
+                stack($me) | map(select(.exited and .id != $ref))[0].id // empty')"
+            [ -n "$old" ] || return 1
+            zellij action close-pane -p "terminal_$old" >/dev/null 2>&1 || return 1
+        done
+    fi
+    ref="$(panes | jq -r --argjson me "$me" '
+        (map(select(.id == $me and (.is_plugin | not)))[0].tab_id) as $tab
+        | map(select(.tab_id == $tab and (.is_plugin | not) and (.is_floating | not) and .id != $me
+            and (.is_suppressed | not)))
+        | max_by(.pane_rows * .pane_columns).id // empty')"
+    dir=down
+    [ -n "$ref" ] || { ref="$me"; dir=right; }
+    open_pane "$ref" --direction "$dir" && return 0
+    # Zellij no divide con paneles flotantes a la vista: se ocultan un instante.
+    tab="$(panes | jq -r --argjson me "$me" '.[] | select(.id == $me and (.is_plugin | not)) | .tab_id')"
+    zellij action hide-floating-panes --tab-id "$tab" >/dev/null 2>&1 || return 1
+    open_pane "$ref" --direction "$dir"
+    local rc=$?
+    zellij action show-floating-panes --tab-id "$tab" >/dev/null 2>&1
+    return "$rc"
+}
+
+name=""
+tail_lines=30
+
+while getopts ":n:t:" opt; do
+    case "$opt" in
+        n) name="$OPTARG" ;;
+        t) tail_lines="$OPTARG" ;;
+        *) echo "uso: zrun [-n nombre] [-t lineas] -- comando [args...]" >&2; exit 64 ;;
+    esac
+done
+shift $((OPTIND - 1))
+[ "${1:-}" = "--" ] && shift
+if [ $# -eq 0 ]; then
+    echo "uso: zrun [-n nombre] [-t lineas] -- comando [args...]" >&2
+    exit 64
+fi
+
+[ -n "$name" ] || name="$(basename "$1")"
+safe_name="$(printf '%s' "$name" | tr -c 'A-Za-z0-9._-' '_')"
+project="$(basename "$(git rev-parse --show-toplevel 2>/dev/null || pwd)")"
+log_dir="${XDG_STATE_HOME:-$HOME/.local/state}/zrun/$project"
+mkdir -p "$log_dir"
+log="$log_dir/$(date +%Y%m%d-%H%M%S)-$$_$safe_name.log"
+status_file="$(mktemp)"
+trap 'rm -f "$status_file" "$status_file.pid"' EXIT
+
+# La ruta se anuncia desde el principio para poder leer el log durante la ejecución.
+printf '[zrun] log: %s\n' "$log"
+
+# Cuerpo del panel. `script` mantiene un TTY real, de modo que los programas
+# conservan colores y barras de progreso y no acumulan la salida en un búfer.
+quoted_cmd="$(printf '%q ' "$@")"
+runner='echo $$ > "$3.pid"; script -qefc "$1" "$2"; rc=$?; printf "%s\n" "$rc" > "$3"; printf "\n[zrun] código de salida: %s | log: %s\n" "$rc" "$2"; exit "$rc"'
+
+# Las tareas en segundo plano de Claude no heredan ZELLIJ, pero sí sesión y panel.
+me="${ZELLIJ_PANE_ID:-}"
+in_zellij=""
+if [ -n "${ZELLIJ_SESSION_NAME:-}" ] && [ -n "$me" ] && command -v zellij >/dev/null 2>&1 && command -v jq >/dev/null 2>&1; then
+    in_zellij="$(panes | jq -r --argjson me "$me" '.[] | select(.id == $me and (.is_plugin | not)) | .id' 2>/dev/null)"
+fi
+
+if [ -n "$in_zellij" ]; then
+    exec 9>"${XDG_RUNTIME_DIR:-/tmp}/zrun-${UID}-${ZELLIJ_SESSION_NAME}.lock"
+    # Si arrancan varios a la vez, se abren de uno en uno para compartir stack.
+    command -v flock >/dev/null 2>&1 && flock -w 30 9
+    # Una repetición sustituye a su panel anterior: solo los ya terminados, con el
+    # mismo nombre y en esta pestaña. Se cierran después de abrir, para no deshacer el stack.
+    repeated="$(panes | jq -r --arg name "$name" --argjson me "$me" '
+        (map(select(.id == $me and (.is_plugin | not)))[0].tab_id) as $tab
+        | .[] | select((.is_plugin | not) and .exited and .title == $name and .tab_id == $tab
+            and ((.terminal_command // "") | contains("[zrun]"))) | .id' 2>/dev/null)"
+    if open_in_stack || open_pane "$me" --floating --x 50% --y 5% --width 48% --height 88%; then
+        for old in $repeated; do
+            zellij action close-pane -p "terminal_$old" >/dev/null 2>&1
+        done
+        exec 9>&-
+        # Espera a que acabe el comando o a que cierren el panel.
+        tail --pid="$runner_pid" -s 0.3 -f /dev/null
+    else
+        echo "[zrun] no se pudo abrir el panel de zellij" >&2
+        exit 70
+    fi
+else
+    tail_lines=0  # la salida ya se ha visto en stdout
+    bash -c "$runner" zrun "$quoted_cmd" "$log" "$status_file" </dev/null
+fi
+
+if [ -s "$status_file" ]; then
+    rc="$(cat "$status_file")"
+    state="terminado"
+else
+    # Sin estado: cerraron el panel antes de que terminara el comando.
+    rc=130
+    state="panel cerrado antes de terminar"
+fi
+
+printf '[zrun] %s | código de salida: %s\n' "$state" "$rc"
+if [ "$tail_lines" -gt 0 ] && [ -s "$log" ]; then
+    printf -- '--- últimas %s líneas ---\n' "$tail_lines"
+    # `script` añade cabecera y pie, traducidos según el idioma: la cabecera se quita
+    # por posición y el pie por su formato, porque no existe si se interrumpió.
+    # Se limpian también colores y retornos de carro. LC_ALL=C hace fiables los rangos.
+    LC_ALL=C sed -E -e '1d' -e '${/="[0-9]+"\]$/d}' -e 's/\x1b\[[0-9;?]*[ -\/]*[@-~]//g' -e 's/\r$//' -e 's/.*\r//' "$log" | tail -n "$tail_lines"
+fi
+exit "$rc"
